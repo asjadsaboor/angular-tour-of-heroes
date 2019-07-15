@@ -5,7 +5,9 @@
   "description": "Example project from an angular.io guide.",
   "scripts": {
     "lint": "tslint ./src/**/*.ts -t verbose",
-    "start": "ng serve",
+    "start": "ng serve --proxy-config proxy.conf.json --disable-host-check",
+    "build:prod": "ng build --prod",
+    "build:optimized": "ng build -c=${ENV} --prod --vendor-chunk --common-chunk --extract-css",
     "test": "ng test",
     "build": "ng build --prod",
     "e2e": "ng e2e",

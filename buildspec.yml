@@ -1,28 +1,17 @@
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      docker: 18
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
-      - aws --version
-      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
-      - REPOSITORY_URI=739676669763.dkr.ecr.us-east-2.amazonaws.com/connect-web
-      - PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F= "{ print $2 }" | sed 's/[",]//g' | sed 's/version://g' | tr -d '[[:space:]]')
-      - echo $PACKAGE_VERSION
+      - npm install
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building web image
-      - echo $ENV
-      - docker build --build-arg "ENV=$ENV" -t connect-web-dev .
-      - mkdir -p $CODEBUILD_SRC_DIR/dist
-      - docker tag connect-web-dev:latest $REPOSITORY_URI:$PACKAGE_VERSION-$ENV
+      - $(npm bin)/ng build --prod --vendor-chunk --common-chunk --extract-css
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI:$PACKAGE_VERSION-$ENV
-      - echo Writing image definitions file...
-      - printf '[{"name":"connect-web","imageUri":"%s"}]' $REPOSITORY_URI:$PACKAGE_VERSION-$ENV > imagedefinitions.json
-artifacts:
-  files: imagedefinitions.json
+      - npm run post:build
+      - aws s3 sync ./dist s3://${S3_BUCKET} --acl 'public-read' --delete
+      - aws cloudfront create-invalidation --distribution-id "${DISTRIBUTION_ID}" --paths '/*'
